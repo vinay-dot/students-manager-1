@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Students Manager</title>
+<style>
+    :root {
+        --primary: #2563eb;
+        --primary-dark: #1d4ed8;
+        --danger: #dc2626;
+        --border: #e2e8f0;
+        --bg: #f8fafc;
+        --text: #0f172a;
+        --muted: #64748b;
+    }
+    * { box-sizing: border-box; }
+    body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+    }
+    header {
+        background: var(--primary);
+        color: white;
+        padding: 20px 32px;
+    }
+    header h1 {
+        margin: 0;
+        font-size: 22px;
+    }
+    main {
+        max-width: 900px;
+        margin: 32px auto;
+        padding: 0 16px;
+    }
+    .card {
+        background: white;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 24px;
+        margin-bottom: 24px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .card h2 {
+        margin-top: 0;
+        font-size: 18px;
+    }
+    form {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr auto;
+        gap: 12px;
+        align-items: end;
+    }
+    .field {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+    label {
+        font-size: 13px;
+        color: var(--muted);
+    }
+    input {
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        font-size: 14px;
+    }
+    input:focus {
+        outline: 2px solid var(--primary);
+        outline-offset: -1px;
+    }
+    button {
+        cursor: pointer;
+        border: none;
+        border-radius: 6px;
+        padding: 10px 16px;
+        font-size: 14px;
+        font-weight: 600;
+    }
+    .btn-primary {
+        background: var(--primary);
+        color: white;
+    }
+    .btn-primary:hover {
+        background: var(--primary-dark);
+    }
+    .btn-secondary {
+        background: #e2e8f0;
+        color: var(--text);
+    }
+    .btn-danger {
+        background: var(--danger);
+        color: white;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    th, td {
+        text-align: left;
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--border);
+        font-size: 14px;
+    }
+    th {
+        color: var(--muted);
+        font-weight: 600;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+    tr:last-child td {
+        border-bottom: none;
+    }
+    .row-actions {
+        display: flex;
+        gap: 8px;
+    }
+    .row-actions button {
+        padding: 6px 12px;
+        font-size: 13px;
+    }
+    #message {
+        margin: 0 0 16px 0;
+        padding: 10px 14px;
+        border-radius: 6px;
+        font-size: 14px;
+        display: none;
+    }
+    #message.error {
+        background: #fee2e2;
+        color: var(--danger);
+        display: block;
+    }
+    #message.success {
+        background: #dcfce7;
+        color: #15803d;
+        display: block;
+    }
+    .empty {
+        color: var(--muted);
+        text-align: center;
+        padding: 24px 0;
+    }
+    .form-actions {
+        display: flex;
+        gap: 8px;
+    }
+</style>
+</head>
+<body>
+<header>
+    <h1>Students Manager</h1>
+</header>
+<main>
+    <div id="message"></div>
+
+    <section class="card">
+        <h2 id="form-title">Add Student</h2>
+        <form id="student-form">
+            <input type="hidden" id="student-id">
+            <div class="field">
+                <label for="name">Name</label>
+                <input type="text" id="name" required>
+            </div>
+            <div class="field">
+                <label for="age">Age</label>
+                <input type="number" id="age" min="1" required>
+            </div>
+            <div class="field">
+                <label for="studentClass">Class</label>
+                <input type="text" id="studentClass" required>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn-primary" id="submit-btn">Add</button>
+                <button type="button" class="btn-secondary" id="cancel-btn" style="display:none;">Cancel</button>
+            </div>
+        </form>
+    </section>
+
+    <section class="card">
+        <h2>Students</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Age</th>
+                    <th>Class</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody id="student-list"></tbody>
+        </table>
+        <div class="empty" id="empty-state" style="display:none;">No students yet. Add one above.</div>
+    </section>
+</main>
+
+<script>
+const API_URL = '/api/students';
+
+const form = document.getElementById('student-form');
+const idField = document.getElementById('student-id');
+const nameField = document.getElementById('name');
+const ageField = document.getElementById('age');
+const classField = document.getElementById('studentClass');
+const formTitle = document.getElementById('form-title');
+const submitBtn = document.getElementById('submit-btn');
+const cancelBtn = document.getElementById('cancel-btn');
+const studentList = document.getElementById('student-list');
+const emptyState = document.getElementById('empty-state');
+const messageBox = document.getElementById('message');
+
+function showMessage(text, type) {
+    messageBox.textContent = text;
+    messageBox.className = type;
+    setTimeout(() => {
+        messageBox.className = '';
+        messageBox.textContent = '';
+    }, 4000);
+}
+
+function resetForm() {
+    form.reset();
+    idField.value = '';
+    formTitle.textContent = 'Add Student';
+    submitBtn.textContent = 'Add';
+    cancelBtn.style.display = 'none';
+}
+
+async function fetchStudents() {
+    try {
+        const res = await fetch(API_URL);
+        if (!res.ok) throw new Error('Failed to load students');
+        const students = await res.json();
+        renderStudents(students);
+    } catch (err) {
+        showMessage(err.message, 'error');
+    }
+}
+
+function renderStudents(students) {
+    studentList.innerHTML = '';
+    emptyState.style.display = students.length === 0 ? 'block' : 'none';
+
+    students.forEach((student) => {
+        const tr = document.createElement('tr');
+
+        const idTd = document.createElement('td');
+        idTd.textContent = student.id;
+
+        const nameTd = document.createElement('td');
+        nameTd.textContent = student.name;
+
+        const ageTd = document.createElement('td');
+        ageTd.textContent = student.age;
+
+        const classTd = document.createElement('td');
+        classTd.textContent = student.studentClass;
+
+        const actionsTd = document.createElement('td');
+        const actionsDiv = document.createElement('div');
+        actionsDiv.className = 'row-actions';
+
+        const editBtn = document.createElement('button');
+        editBtn.textContent = 'Edit';
+        editBtn.className = 'btn-secondary';
+        editBtn.addEventListener('click', () => startEdit(student));
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.textContent = 'Delete';
+        deleteBtn.className = 'btn-danger';
+        deleteBtn.addEventListener('click', () => deleteStudent(student.id));
+
+        actionsDiv.appendChild(editBtn);
+        actionsDiv.appendChild(deleteBtn);
+        actionsTd.appendChild(actionsDiv);
+
+        tr.appendChild(idTd);
+        tr.appendChild(nameTd);
+        tr.appendChild(ageTd);
+        tr.appendChild(classTd);
+        tr.appendChild(actionsTd);
+
+        studentList.appendChild(tr);
+    });
+}
+
+function startEdit(student) {
+    idField.value = student.id;
+    nameField.value = student.name;
+    ageField.value = student.age;
+    classField.value = student.studentClass;
+    formTitle.textContent = 'Edit Student';
+    submitBtn.textContent = 'Update';
+    cancelBtn.style.display = 'inline-block';
+    nameField.focus();
+}
+
+cancelBtn.addEventListener('click', resetForm);
+
+form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+
+    const payload = {
+        name: nameField.value.trim(),
+        age: Number(ageField.value),
+        studentClass: classField.value.trim()
+    };
+
+    const id = idField.value;
+    const isEdit = Boolean(id);
+    const url = isEdit ? `${API_URL}/${id}` : API_URL;
+    const method = isEdit ? 'PUT' : 'POST';
+
+    try {
+        const res = await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+            const problem = await res.json().catch(() => null);
+            throw new Error(problem?.detail || 'Request failed');
+        }
+
+        showMessage(isEdit ? 'Student updated' : 'Student added', 'success');
+        resetForm();
+        fetchStudents();
+    } catch (err) {
+        showMessage(err.message, 'error');
+    }
+});
+
+async function deleteStudent(id) {
+    if (!confirm('Delete this student?')) return;
+
+    try {
+        const res = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+        if (!res.ok && res.status !== 204) {
+            const problem = await res.json().catch(() => null);
+            throw new Error(problem?.detail || 'Failed to delete student');
+        }
+        showMessage('Student deleted', 'success');
+        fetchStudents();
+    } catch (err) {
+        showMessage(err.message, 'error');
+    }
+}
+
+fetchStudents();
+</script>
+</body>
+</html>
